@@ -1,52 +1,39 @@
-import { io } from 'socket.io-client';
+import Pusher from 'pusher-js';
 
-const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
+const PUSHER_KEY = '3f4db36d0b672bbceca9';
+const PUSHER_CLUSTER = 'ap3';
 
-const isLocalEnv = typeof window !== 'undefined' && !isVercel && (
-  window.location.hostname === 'localhost' ||
-  window.location.hostname === '127.0.0.1' ||
-  window.location.hostname.startsWith('192.168.') ||
-  window.location.hostname.startsWith('10.') ||
-  window.location.hostname.startsWith('172.')
-);
+let currentState = {
+  votes: {},
+  session: {
+    status: 'voting',
+    countdownEndAt: null
+  }
+};
 
-const envSocketUrl = import.meta.env.VITE_SOCKET_URL;
-const socketUrl = envSocketUrl || (isLocalEnv ? `${window.location.protocol}//${window.location.hostname}:4000` : null);
-
-let isSocketConnected = false;
-let pollingInterval = null;
 const listeners = {};
 
-export const rawSocket = socketUrl ? io(socketUrl, {
-  autoConnect: true,
-  reconnectionAttempts: 2,
-  reconnectionDelay: 1000,
-  timeout: 2000
-}) : null;
+// Initialize Pusher Realtime Client
+const pusher = new Pusher(PUSHER_KEY, {
+  cluster: PUSHER_CLUSTER,
+  forceTLS: true
+});
 
-if (rawSocket) {
-  rawSocket.on('connect', () => {
-    console.log('✅ Connected via Socket.io:', socketUrl);
-    isSocketConnected = true;
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      pollingInterval = null;
-    }
-  });
+const channel = pusher.subscribe('voting-channel');
 
-  rawSocket.on('connect_error', () => {
-    isSocketConnected = false;
-    startPolling();
-  });
+channel.bind('state_changed', (data) => {
+  if (data) {
+    currentState = data;
+    emitLocal('state_changed', currentState);
+  }
+});
 
-  rawSocket.on('disconnect', () => {
-    isSocketConnected = false;
-    startPolling();
-  });
-} else {
-  // Always poll when on Vercel domain
-  startPolling();
-}
+channel.bind('vote_error', (data) => {
+  emitLocal('vote_error', data);
+});
+
+// Fetch initial state immediately on module load
+fetchStateFromApi();
 
 function emitLocal(event, data) {
   if (listeners[event]) {
@@ -65,46 +52,35 @@ async function fetchStateFromApi() {
     });
     if (res.ok) {
       const data = await res.json();
-      emitLocal('state_changed', data);
+      currentState = data;
+      emitLocal('state_changed', currentState);
     }
   } catch (err) {
-    // API polling error fallback
+    emitLocal('state_changed', currentState);
   }
 }
 
-function startPolling() {
-  if (pollingInterval) return;
-  fetchStateFromApi();
-  pollingInterval = setInterval(fetchStateFromApi, 1000);
-}
-
-// Event bus wrapper for socket
+// Event bus wrapper compatible with Socket.io API
 export const socket = {
   on(event, callback) {
     if (!listeners[event]) listeners[event] = [];
     listeners[event].push(callback);
-    if (rawSocket && rawSocket.on) {
-      rawSocket.on(event, callback);
+    // Instantly trigger current state on registration
+    if (event === 'state_changed' && currentState) {
+      callback(currentState);
     }
   },
   off(event, callback) {
     if (listeners[event]) {
       listeners[event] = listeners[event].filter(cb => cb !== callback);
     }
-    if (rawSocket && rawSocket.off) {
-      rawSocket.off(event, callback);
-    }
   },
   emit(event, data) {
-    if (isSocketConnected && rawSocket) {
-      rawSocket.emit(event, data);
-    } else {
-      handleRestAction(event, data);
-    }
+    handleRestAction(event, data);
   }
 };
 
-// REST Fallback Action Handler
+// REST Fallback & Trigger Handler
 async function handleRestAction(event, data) {
   const action = event;
   const payload = data;
@@ -121,6 +97,7 @@ async function handleRestAction(event, data) {
     if (!res.ok) {
       emitLocal('vote_error', { message: result.message || '요청 처리 실패' });
     } else {
+      currentState = result;
       emitLocal('state_changed', result);
     }
   } catch (err) {
@@ -130,40 +107,20 @@ async function handleRestAction(event, data) {
 
 // Action Helpers
 export function submitVote(userKey, votedTeam) {
-  if (isSocketConnected && rawSocket) {
-    rawSocket.emit('vote_submit', { userKey, votedTeam });
-  } else {
-    handleRestAction('vote_submit', { userKey, votedTeam });
-  }
+  handleRestAction('vote_submit', { userKey, votedTeam });
 }
 
 export function resetVotes() {
-  if (isSocketConnected && rawSocket) {
-    rawSocket.emit('admin_reset');
-  } else {
-    handleRestAction('admin_reset');
-  }
+  handleRestAction('admin_reset');
 }
 
 export function forceCountdown() {
-  if (isSocketConnected && rawSocket) {
-    rawSocket.emit('admin_force_countdown');
-  } else {
-    handleRestAction('admin_force_countdown');
-  }
+  handleRestAction('admin_force_countdown');
 }
 
 export function forceEnd() {
-  if (isSocketConnected && rawSocket) {
-    rawSocket.emit('admin_force_end');
-  } else {
-    handleRestAction('admin_force_end');
-  }
+  handleRestAction('admin_force_end');
 }
 
-// Start polling fallback if not connected within 1 second
-setTimeout(() => {
-  if (!isSocketConnected) {
-    startPolling();
-  }
-}, 1000);
+// Backup sync interval every 2 seconds
+setInterval(fetchStateFromApi, 2000);

@@ -1,59 +1,27 @@
-// Vercel Serverless Function for Shared Voting App State across instances
+import Pusher from 'pusher';
 
-const CLOUD_DB_URL = 'https://api.restful-api.dev/objects/ff8081819ff5b110019ffb7084f91247';
-
-const initialDB = {
-  votes: {},
-  session: {
-    status: 'voting', // 'voting' | 'counting' | 'ended'
-    countdownEndAt: null
-  }
-};
+const pusher = new Pusher({
+  appId: '1789012',
+  key: '3f4db36d0b672bbceca9',
+  secret: '67efb51e0ff0498b87d6',
+  cluster: 'ap3',
+  useTLS: true
+});
 
 if (!globalThis._voting_db) {
-  globalThis._voting_db = initialDB;
-}
-
-async function fetchRemoteDB() {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1200);
-
-    const res = await fetch(CLOUD_DB_URL, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
-    if (res.ok) {
-      const json = await res.json();
-      if (json && json.data && json.data.votes) {
-        globalThis._voting_db = json.data;
-        return json.data;
-      }
+  globalThis._voting_db = {
+    votes: {},
+    session: {
+      status: 'voting', // 'voting' | 'counting' | 'ended'
+      countdownEndAt: null
     }
-  } catch (err) {
-    // Return cached in-memory DB if remote fetch fails or times out
-  }
-  return globalThis._voting_db;
+  };
 }
 
-async function saveRemoteDB(dbData) {
-  globalThis._voting_db = dbData;
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1500);
+const getDB = () => globalThis._voting_db;
 
-    await fetch(CLOUD_DB_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'vote_db', data: dbData }),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-  } catch (err) {
-    // Remote save error fallback
-  }
-}
-
-function checkCountdownState(db) {
+function checkCountdownState() {
+  const db = getDB();
   if (db.session.status === 'counting' && db.session.countdownEndAt) {
     if (Date.now() >= db.session.countdownEndAt) {
       db.session.status = 'ended';
@@ -62,11 +30,20 @@ function checkCountdownState(db) {
   }
 }
 
+async function broadcastState() {
+  const db = getDB();
+  try {
+    await pusher.trigger('voting-channel', 'state_changed', db);
+  } catch (err) {
+    console.error('Pusher trigger error:', err);
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
 
@@ -74,8 +51,8 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  let db = await fetchRemoteDB();
-  checkCountdownState(db);
+  const db = getDB();
+  checkCountdownState();
 
   if (req.method === 'GET') {
     return res.status(200).json({ ...db, localIP: 'vercel' });
@@ -110,7 +87,7 @@ export default async function handler(req, res) {
         db.session.countdownEndAt = Date.now() + 10000;
       }
 
-      await saveRemoteDB(db);
+      await broadcastState();
       return res.status(200).json({ success: true, ...db });
     }
 
@@ -118,7 +95,7 @@ export default async function handler(req, res) {
       db.votes = {};
       db.session.status = 'voting';
       db.session.countdownEndAt = null;
-      await saveRemoteDB(db);
+      await broadcastState();
       return res.status(200).json({ success: true, ...db });
     }
 
@@ -127,14 +104,14 @@ export default async function handler(req, res) {
         db.session.status = 'counting';
         db.session.countdownEndAt = Date.now() + 10000;
       }
-      await saveRemoteDB(db);
+      await broadcastState();
       return res.status(200).json({ success: true, ...db });
     }
 
     if (action === 'admin_force_end') {
       db.session.status = 'ended';
       db.session.countdownEndAt = null;
-      await saveRemoteDB(db);
+      await broadcastState();
       return res.status(200).json({ success: true, ...db });
     }
 

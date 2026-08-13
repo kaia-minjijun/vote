@@ -14,6 +14,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+import Pusher from 'pusher';
+
+const pusher = new Pusher({
+  appId: '1789012',
+  key: '3f4db36d0b672bbceca9',
+  secret: '67efb51e0ff0498b87d6',
+  cluster: 'ap3',
+  useTLS: true
+});
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
@@ -73,20 +83,25 @@ function getLocalIP() {
 const localIP = getLocalIP();
 let countdownTimer = null;
 
+function broadcastState() {
+  io.emit('state_changed', { ...db, localIP });
+  pusher.trigger('voting-channel', 'state_changed', { ...db, localIP }).catch(() => {});
+}
+
 function triggerCountdown() {
   if (db.session.status === 'counting') return;
   
   db.session.status = 'counting';
   db.session.countdownEndAt = Date.now() + 10000;
   saveDB();
-  io.emit('state_changed', db);
+  broadcastState();
 
   if (countdownTimer) clearTimeout(countdownTimer);
   countdownTimer = setTimeout(() => {
     db.session.status = 'ended';
     db.session.countdownEndAt = null;
     saveDB();
-    io.emit('state_changed', db);
+    broadcastState();
   }, 10000);
 }
 
