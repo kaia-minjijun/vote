@@ -9,8 +9,8 @@ export function QRCodeModal({ onClose }) {
     // Fetch local IP from server
     fetch('/api/info')
       .then(r => r.json())
-      .then(data => setVoteUrl(data.voteUrl || `http://${window.location.hostname}:3000/vote`))
-      .catch(() => setVoteUrl(`http://${window.location.hostname}:3000/vote`));
+      .then(data => setVoteUrl(data.voteUrl || `${window.location.protocol}//${window.location.host}/vote`))
+      .catch(() => setVoteUrl(`${window.location.protocol}//${window.location.host}/vote`));
   }, []);
 
   return (

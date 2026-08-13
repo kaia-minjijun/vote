@@ -67,7 +67,7 @@ async function fetchStateFromApi() {
 function startPolling() {
   if (pollingInterval) return;
   fetchStateFromApi();
-  pollingInterval = setInterval(fetchStateFromApi, 1500);
+  pollingInterval = setInterval(fetchStateFromApi, 1000);
 }
 
 // Event bus wrapper for socket
