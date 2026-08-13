@@ -56,7 +56,7 @@ export function TableGroup({ teamNumber, voteCount = 0, isWinner = false }) {
       </mesh>
 
       {/* 3D Label Badge Above Table */}
-      <Html position={[0, 2.2, 0]} center distanceFactor={15}>
+      <Html position={[0, 2.2, 0]} center distanceFactor={15} zIndexRange={[10, 0]}>
         <div className={`px-4 py-2 rounded-xl backdrop-blur-md flex flex-col items-center border transition-all duration-300 ${
           isWinner 
             ? 'bg-amber-500/90 border-amber-300 text-slate-950 shadow-[0_0_25px_rgba(245,158,11,0.8)] scale-110 animate-bounce-subtle' 
