@@ -56,7 +56,13 @@ function emitLocal(event, data) {
 
 async function fetchStateFromApi() {
   try {
-    const res = await fetch('/api/state');
+    const res = await fetch(`/api/state?t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: {
+        'Pragma': 'no-cache',
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
+      }
+    });
     if (res.ok) {
       const data = await res.json();
       emitLocal('state_changed', data);

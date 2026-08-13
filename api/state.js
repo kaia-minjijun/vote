@@ -16,16 +16,21 @@ if (!globalThis._voting_db) {
 
 async function fetchRemoteDB() {
   try {
-    const res = await fetch(CLOUD_DB_URL);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1200);
+
+    const res = await fetch(CLOUD_DB_URL, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
     if (res.ok) {
       const json = await res.json();
-      if (json && json.data) {
+      if (json && json.data && json.data.votes) {
         globalThis._voting_db = json.data;
         return json.data;
       }
     }
   } catch (err) {
-    console.error('Remote DB fetch error:', err);
+    // Return cached in-memory DB if remote fetch fails or times out
   }
   return globalThis._voting_db;
 }
@@ -33,13 +38,18 @@ async function fetchRemoteDB() {
 async function saveRemoteDB(dbData) {
   globalThis._voting_db = dbData;
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1500);
+
     await fetch(CLOUD_DB_URL, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'vote_db', data: dbData })
+      body: JSON.stringify({ name: 'vote_db', data: dbData }),
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
   } catch (err) {
-    console.error('Remote DB save error:', err);
+    // Remote save error fallback
   }
 }
 
@@ -56,6 +66,9 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
