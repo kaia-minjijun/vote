@@ -1,14 +1,19 @@
 // Vercel Serverless Function for Voting App State Fallback
 
-let db = {
-  votes: {},
-  session: {
-    status: 'voting', // 'voting' | 'counting' | 'ended'
-    countdownEndAt: null
-  }
-};
+if (!globalThis._voting_db) {
+  globalThis._voting_db = {
+    votes: {},
+    session: {
+      status: 'voting', // 'voting' | 'counting' | 'ended'
+      countdownEndAt: null
+    }
+  };
+}
+
+const getDB = () => globalThis._voting_db;
 
 function checkCountdownState() {
+  const db = getDB();
   if (db.session.status === 'counting' && db.session.countdownEndAt) {
     if (Date.now() >= db.session.countdownEndAt) {
       db.session.status = 'ended';
@@ -27,6 +32,7 @@ export default function handler(req, res) {
   }
 
   checkCountdownState();
+  const db = getDB();
 
   if (req.method === 'GET') {
     return res.status(200).json({ ...db, localIP: 'vercel' });

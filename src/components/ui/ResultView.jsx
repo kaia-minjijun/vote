@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
-import { Trophy, Award } from 'lucide-react';
+import { Trophy, Award, RotateCcw } from 'lucide-react';
 import { TEAM_COLORS } from '../3d/TableGroup';
+import { resetVotes } from '../../socket';
 
 const TEAM_LABELS = {
   1: '1팀', 2: '2팀', 3: '3팀', 4: '4팀', 5: '5팀',
@@ -38,10 +39,16 @@ export function ResultView({ votes = {} }) {
     setTimeout(() => fire({ angle: 90, origin: { x: 0.5, y: 0.6 } }), 600);
   }, []);
 
+  const handleReset = () => {
+    if (window.confirm('투표 결과를 초기화하고 새로운 투표를 시작하시겠습니까?')) {
+      resetVotes();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-gradient-to-b from-slate-950/95 via-slate-900/95 to-indigo-950/95 backdrop-blur-md overflow-auto py-10">
       {/* Header */}
-      <div className="flex flex-col items-center gap-3 mb-10">
+      <div className="flex flex-col items-center gap-3 mb-8">
         <Trophy className="w-14 h-14 text-amber-400 drop-shadow-[0_0_25px_rgba(245,158,11,0.9)]" />
         <h1 className="text-4xl font-black text-white tracking-tight">투표 결과 발표</h1>
         <p className="text-slate-400 text-base font-medium">
@@ -66,7 +73,7 @@ export function ResultView({ votes = {} }) {
       )}
 
       {/* Bar Chart */}
-      <div className="w-full max-w-2xl px-6 flex flex-col gap-3">
+      <div className="w-full max-w-2xl px-6 flex flex-col gap-3 mb-10">
         {sortedTeams.map(({ team, count }, idx) => {
           const isWinner = team === winnerTeam;
           const barWidth = Math.round((count / maxVotes) * 100);
@@ -102,6 +109,15 @@ export function ResultView({ votes = {} }) {
           );
         })}
       </div>
+
+      {/* Admin Reset Button */}
+      <button
+        onClick={handleReset}
+        className="px-6 py-3 bg-rose-600/90 hover:bg-rose-500 text-white font-bold rounded-2xl shadow-lg border border-rose-400 flex items-center gap-2.5 transition-all hover:scale-105 active:scale-95"
+      >
+        <RotateCcw className="w-5 h-5" />
+        <span>투표 초기화 (새로 시작하기)</span>
+      </button>
     </div>
   );
 }

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, CheckCircle2, ChevronRight, RotateCcw, Lock } from 'lucide-react';
+import { Search, CheckCircle2, ChevronRight, RotateCcw, Lock, Settings } from 'lucide-react';
 import { ROSTER, TOTAL_PARTICIPANTS, getParticipantKey } from '../data/roster';
 import { socket, submitVote } from '../socket';
 import { TEAM_COLORS } from '../components/3d/TableGroup';
+import { AdminControls } from '../components/ui/AdminControls';
 
 const TEAM_DESCRIPTIONS = {
   1: '1팀', 2: '2팀', 3: '3팀', 4: '4팀', 5: '5팀',
@@ -60,115 +61,112 @@ function NameSelectStep({ onSelect }) {
                 <div className="text-xs text-slate-400">{p.dept} · {p.title} · <span style={{ color: TEAM_COLORS[p.team] }}>원래 {p.team}팀</span></div>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition-colors flex-shrink-0" />
+            <ChevronRight className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" />
           </button>
         ))}
-        {filtered.length === 0 && (
-          <div className="text-center text-slate-500 py-12 text-sm">검색 결과가 없습니다.</div>
-        )}
       </div>
     </div>
   );
 }
 
-// Step 2: Team selection vote
+// Step 2: Team Selection
 function TeamSelectStep({ participant, currentVote, sessionStatus, onVote, onChangeName }) {
   const isLocked = sessionStatus !== 'voting';
+  const assignedTeam = participant.team;
   const userKey = getParticipantKey(participant);
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-5 pt-8 pb-4">
-        <button
-          onClick={onChangeName}
-          className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1 mb-4 transition-colors"
-        >
-          <RotateCcw className="w-3 h-3" /> 다른 이름 선택
-        </button>
-
-        {/* Participant Info */}
-        <div className="flex items-center gap-3 mb-5 p-4 bg-slate-800/60 border border-slate-700 rounded-2xl">
-          <div
-            className="w-11 h-11 rounded-full flex items-center justify-center font-black text-lg text-white shadow-lg flex-shrink-0"
-            style={{ backgroundColor: TEAM_COLORS[participant.team] }}
-          >
-            {participant.name[0]}
-          </div>
-          <div>
-            <div className="font-extrabold text-white">{participant.name}</div>
-            <div className="text-xs text-slate-400">{participant.dept} · {participant.title}</div>
-            <div className="text-xs mt-0.5" style={{ color: TEAM_COLORS[participant.team] }}>
-              원래 소속: {participant.team}팀 (자신의 팀에는 투표 불가)
+    <div className="flex flex-col h-full overflow-y-auto px-5 py-6">
+      {/* Participant Profile Banner */}
+      <div className="glass-panel p-4 rounded-2xl mb-6 border border-slate-700/80 bg-slate-800/40">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-11 h-11 rounded-full flex items-center justify-center font-black text-lg text-white shadow-lg"
+              style={{ backgroundColor: TEAM_COLORS[assignedTeam] }}
+            >
+              {participant.name[0]}
+            </div>
+            <div>
+              <div className="text-lg font-black text-white">{participant.name}</div>
+              <div className="text-xs text-slate-400">{participant.dept} · {participant.title}</div>
             </div>
           </div>
+          <button
+            onClick={onChangeName}
+            className="flex items-center gap-1 px-3 py-1.5 bg-slate-700/60 hover:bg-slate-700 border border-slate-600 rounded-lg text-xs font-semibold text-slate-300 transition-colors"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>변경</span>
+          </button>
         </div>
 
-        <h2 className="text-xl font-black text-white mb-1">투표할 조 선택</h2>
-        <p className="text-slate-400 text-sm">
-          {isLocked
-            ? '⛔ 투표가 마감되어 조를 변경할 수 없습니다.'
-            : currentVote
-              ? `현재 투표: ${currentVote}팀 · 마감 전까지 변경 가능합니다.`
-              : '1~9팀 중 1팀을 선택하세요.'}
-        </p>
-      </div>
-
-      {/* Team Grid */}
-      <div className="flex-1 overflow-y-auto px-5 pb-8">
-        <div className="grid grid-cols-3 gap-3">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(teamNum => {
-            const isOwnTeam = participant.team === teamNum;
-            const isSelected = currentVote === teamNum;
-            const color = TEAM_COLORS[teamNum];
-
-            return (
-              <button
-                key={teamNum}
-                disabled={isOwnTeam || isLocked}
-                onClick={() => !isOwnTeam && !isLocked && onVote(userKey, teamNum)}
-                className={`relative flex flex-col items-center justify-center gap-1.5 py-5 rounded-2xl border-2 font-bold text-sm transition-all active:scale-95 ${
-                  isSelected
-                    ? 'scale-105 shadow-xl text-white'
-                    : isOwnTeam
-                      ? 'bg-slate-800/30 border-slate-700/30 text-slate-600 cursor-not-allowed opacity-50'
-                      : isLocked
-                        ? 'bg-slate-800/30 border-slate-700/30 text-slate-600 cursor-not-allowed'
-                        : 'bg-slate-800/70 border-slate-700 hover:border-opacity-80 text-slate-200 hover:scale-[1.03]'
-                }`}
-                style={{
-                  borderColor: isSelected ? color : isOwnTeam ? undefined : undefined,
-                  backgroundColor: isSelected ? `${color}22` : undefined,
-                  boxShadow: isSelected ? `0 0 20px ${color}55` : undefined,
-                }}
-              >
-                {/* Color dot */}
-                <div
-                  className="w-6 h-6 rounded-full shadow-md"
-                  style={{ backgroundColor: color, opacity: isOwnTeam ? 0.3 : 1 }}
-                />
-                <span className="text-base font-extrabold">{teamNum}팀</span>
-                {isSelected && (
-                  <CheckCircle2 className="absolute top-2 right-2 w-4 h-4" style={{ color }} />
-                )}
-                {isOwnTeam && (
-                  <span className="text-[10px] text-slate-500 font-normal mt-0.5">내 팀</span>
-                )}
-              </button>
-            );
-          })}
+        <div className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
+          원래 소속: {assignedTeam}팀 (자신의 팀에는 투표 불가)
         </div>
       </div>
 
-      {/* Locked Banner */}
+      {/* Lock Banner */}
       {isLocked && (
-        <div className="mx-5 mb-6 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-center gap-3">
-          <Lock className="w-5 h-5 text-red-400 flex-shrink-0" />
-          <div>
-            <p className="text-red-300 font-bold text-sm">투표가 마감되었습니다</p>
-            <p className="text-red-400/70 text-xs mt-0.5">공용 화면에서 최종 결과를 확인하세요.</p>
-          </div>
+        <div className="mb-6 p-4 bg-amber-500/15 border border-amber-500/30 rounded-2xl flex items-center gap-3 text-amber-300 text-sm font-bold">
+          <Lock className="w-5 h-5 flex-shrink-0" />
+          <span>투표가 마감되어 조를 변경할 수 없습니다.</span>
         </div>
       )}
+
+      {/* Team Selection Grid */}
+      <div className="mb-4">
+        <h2 className="text-xl font-black text-white mb-1">투표할 조 선택</h2>
+        <p className="text-xs text-slate-400">1~9팀 중 1팀을 선택하세요.</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 pb-8">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(teamNum => {
+          const isOwnTeam = teamNum === assignedTeam;
+          const isSelected = currentVote === teamNum;
+          const color = TEAM_COLORS[teamNum];
+          const isDisabled = isOwnTeam || isLocked;
+
+          return (
+            <button
+              key={teamNum}
+              disabled={isDisabled}
+              onClick={() => onVote(userKey, teamNum)}
+              className={`relative flex items-center justify-between p-4 rounded-2xl border transition-all text-left active:scale-[0.98] ${
+                isDisabled
+                  ? 'bg-slate-900/30 border-slate-800/60 opacity-40 cursor-not-allowed'
+                  : isSelected
+                    ? 'bg-gradient-to-r from-blue-900/40 via-indigo-900/40 to-slate-800/60 border-blue-500 shadow-lg shadow-blue-500/20'
+                    : 'bg-slate-800/50 hover:bg-slate-800 border-slate-700/80 hover:border-slate-600'
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-md flex-shrink-0"
+                  style={{ backgroundColor: color }}
+                >
+                  {teamNum}
+                </div>
+                <div>
+                  <div className="font-extrabold text-white text-base">
+                    {teamNum}팀
+                  </div>
+                  {isOwnTeam && (
+                    <span className="text-[11px] font-bold text-slate-400">내 팀</span>
+                  )}
+                </div>
+              </div>
+
+              {isSelected && (
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-500 text-white rounded-full font-bold text-xs shadow-md animate-pulse">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>선택됨</span>
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -179,6 +177,7 @@ export function VotePage() {
   const [votes, setVotes] = useState({});
   const [session, setSession] = useState({ status: 'voting', countdownEndAt: null });
   const [voteError, setVoteError] = useState('');
+  const [showAdminModal, setShowAdminModal] = useState(false);
 
   useEffect(() => {
     socket.on('state_changed', (data) => {
@@ -215,15 +214,25 @@ export function VotePage() {
             총 {Object.keys(votes).length} / {TOTAL_PARTICIPANTS}명 참여
           </p>
         </div>
-        <div className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
-          session.status === 'voting'
-            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-            : session.status === 'counting'
-              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse'
-              : 'bg-red-500/20 text-red-400 border border-red-500/30'
-        }`}>
-          {session.status === 'voting' ? '투표 진행 중' :
-           session.status === 'counting' ? '⏱ 마감 중' : '🔒 마감'}
+        <div className="flex items-center gap-2">
+          <div className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+            session.status === 'voting'
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              : session.status === 'counting'
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse'
+                : 'bg-red-500/20 text-red-400 border border-red-500/30'
+          }`}>
+            {session.status === 'voting' ? '투표 진행 중' :
+             session.status === 'counting' ? '⏱ 마감 중' : '🔒 마감'}
+          </div>
+
+          <button
+            onClick={() => setShowAdminModal(true)}
+            className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"
+            title="관리자 설정"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -248,6 +257,14 @@ export function VotePage() {
           />
         )}
       </div>
+
+      {/* Admin Modal */}
+      {showAdminModal && (
+        <AdminControls
+          sessionStatus={session.status}
+          onClose={() => setShowAdminModal(false)}
+        />
+      )}
     </div>
   );
 }
