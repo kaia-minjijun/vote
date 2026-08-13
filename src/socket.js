@@ -1,8 +1,8 @@
 import { io } from 'socket.io-client';
 
-// Determine socket server URL
-const envSocketUrl = import.meta.env.VITE_SOCKET_URL;
-const isLocalEnv = typeof window !== 'undefined' && (
+const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
+
+const isLocalEnv = typeof window !== 'undefined' && !isVercel && (
   window.location.hostname === 'localhost' ||
   window.location.hostname === '127.0.0.1' ||
   window.location.hostname.startsWith('192.168.') ||
@@ -10,41 +10,43 @@ const isLocalEnv = typeof window !== 'undefined' && (
   window.location.hostname.startsWith('172.')
 );
 
-const defaultSocketUrl = isLocalEnv
-  ? `${window.location.protocol}//${window.location.hostname}:4000`
-  : 'http://localhost:4000';
-
-const socketUrl = envSocketUrl || defaultSocketUrl;
+const envSocketUrl = import.meta.env.VITE_SOCKET_URL;
+const socketUrl = envSocketUrl || (isLocalEnv ? `${window.location.protocol}//${window.location.hostname}:4000` : null);
 
 let isSocketConnected = false;
 let pollingInterval = null;
 const listeners = {};
 
-export const rawSocket = io(socketUrl, {
+export const rawSocket = socketUrl ? io(socketUrl, {
   autoConnect: true,
-  reconnectionAttempts: 3,
+  reconnectionAttempts: 2,
   reconnectionDelay: 1000,
-  timeout: 3000
-});
+  timeout: 2000
+}) : null;
 
-rawSocket.on('connect', () => {
-  console.log('✅ Socket.io Connected to server:', socketUrl);
-  isSocketConnected = true;
-  if (pollingInterval) {
-    clearInterval(pollingInterval);
-    pollingInterval = null;
-  }
-});
+if (rawSocket) {
+  rawSocket.on('connect', () => {
+    console.log('✅ Connected via Socket.io:', socketUrl);
+    isSocketConnected = true;
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      pollingInterval = null;
+    }
+  });
 
-rawSocket.on('connect_error', () => {
-  isSocketConnected = false;
+  rawSocket.on('connect_error', () => {
+    isSocketConnected = false;
+    startPolling();
+  });
+
+  rawSocket.on('disconnect', () => {
+    isSocketConnected = false;
+    startPolling();
+  });
+} else {
+  // Always poll when on Vercel domain
   startPolling();
-});
-
-rawSocket.on('disconnect', () => {
-  isSocketConnected = false;
-  startPolling();
-});
+}
 
 function emitLocal(event, data) {
   if (listeners[event]) {
@@ -75,16 +77,20 @@ export const socket = {
   on(event, callback) {
     if (!listeners[event]) listeners[event] = [];
     listeners[event].push(callback);
-    rawSocket.on(event, callback);
+    if (rawSocket && rawSocket.on) {
+      rawSocket.on(event, callback);
+    }
   },
   off(event, callback) {
     if (listeners[event]) {
       listeners[event] = listeners[event].filter(cb => cb !== callback);
     }
-    rawSocket.off(event, callback);
+    if (rawSocket && rawSocket.off) {
+      rawSocket.off(event, callback);
+    }
   },
   emit(event, data) {
-    if (isSocketConnected) {
+    if (isSocketConnected && rawSocket) {
       rawSocket.emit(event, data);
     } else {
       handleRestAction(event, data);
@@ -118,7 +124,7 @@ async function handleRestAction(event, data) {
 
 // Action Helpers
 export function submitVote(userKey, votedTeam) {
-  if (isSocketConnected) {
+  if (isSocketConnected && rawSocket) {
     rawSocket.emit('vote_submit', { userKey, votedTeam });
   } else {
     handleRestAction('vote_submit', { userKey, votedTeam });
@@ -126,7 +132,7 @@ export function submitVote(userKey, votedTeam) {
 }
 
 export function resetVotes() {
-  if (isSocketConnected) {
+  if (isSocketConnected && rawSocket) {
     rawSocket.emit('admin_reset');
   } else {
     handleRestAction('admin_reset');
@@ -134,7 +140,7 @@ export function resetVotes() {
 }
 
 export function forceCountdown() {
-  if (isSocketConnected) {
+  if (isSocketConnected && rawSocket) {
     rawSocket.emit('admin_force_countdown');
   } else {
     handleRestAction('admin_force_countdown');
@@ -142,16 +148,16 @@ export function forceCountdown() {
 }
 
 export function forceEnd() {
-  if (isSocketConnected) {
+  if (isSocketConnected && rawSocket) {
     rawSocket.emit('admin_force_end');
   } else {
     handleRestAction('admin_force_end');
   }
 }
 
-// Start polling fallback if not connected within 1.5 seconds
+// Start polling fallback if not connected within 1 second
 setTimeout(() => {
-  if (!rawSocket.connected) {
+  if (!isSocketConnected) {
     startPolling();
   }
-}, 1500);
+}, 1000);

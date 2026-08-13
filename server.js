@@ -100,6 +100,65 @@ app.get('/api/info', (req, res) => {
   });
 });
 
+// API endpoint for state GET
+app.get('/api/state', (req, res) => {
+  res.json({ ...db, localIP });
+});
+
+// API endpoint for state POST
+app.post('/api/state', (req, res) => {
+  const { action, payload } = req.body || {};
+  if (action === 'vote_submit') {
+    const { userKey, votedTeam } = payload || {};
+    if (db.session.status !== 'voting') {
+      return res.status(400).json({ message: '투표가 마감되어 조를 변경할 수 없습니다.' });
+    }
+    if (!userKey || !votedTeam) {
+      return res.status(400).json({ message: '잘못된 투표 요청입니다.' });
+    }
+    const assignedTeam = parseInt(userKey.split('_')[0], 10);
+    if (assignedTeam === parseInt(votedTeam, 10)) {
+      return res.status(400).json({ message: '자신이 속한 조에는 투표할 수 없습니다.' });
+    }
+    db.votes[userKey] = {
+      votedTeam: parseInt(votedTeam, 10),
+      updatedAt: Date.now()
+    };
+    if (Object.keys(db.votes).length >= 44 && db.session.status === 'voting') {
+      triggerCountdown();
+    }
+    saveDB();
+    io.emit('state_changed', { ...db, localIP });
+    return res.json({ success: true, ...db });
+  }
+
+  if (action === 'admin_reset') {
+    if (countdownTimer) clearTimeout(countdownTimer);
+    db.votes = {};
+    db.session.status = 'voting';
+    db.session.countdownEndAt = null;
+    saveDB();
+    io.emit('state_changed', { ...db, localIP });
+    return res.json({ success: true, ...db });
+  }
+
+  if (action === 'admin_force_countdown') {
+    triggerCountdown();
+    return res.json({ success: true, ...db });
+  }
+
+  if (action === 'admin_force_end') {
+    if (countdownTimer) clearTimeout(countdownTimer);
+    db.session.status = 'ended';
+    db.session.countdownEndAt = null;
+    saveDB();
+    io.emit('state_changed', { ...db, localIP });
+    return res.json({ success: true, ...db });
+  }
+
+  res.status(400).json({ message: 'Unknown action' });
+});
+
 io.on('connection', (socket) => {
   // Send current state on connection
   socket.emit('state_changed', { ...db, localIP });
