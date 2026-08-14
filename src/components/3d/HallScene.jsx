@@ -107,7 +107,7 @@ export function HallScene({ votes = {}, session = {}, winningTeam = null }) {
         />
 
         {/* Floor Base */}
-        <mesh position={[0, -0.05, 0]}>
+        <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[35, 30]} />
           <meshStandardMaterial color="#0c1220" roughness={0.6} metalness={0.4} />
         </mesh>
