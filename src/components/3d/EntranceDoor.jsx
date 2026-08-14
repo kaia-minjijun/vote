@@ -35,9 +35,15 @@ export function EntranceDoor({ position = [-10.5, 0, -7.5] }) {
       </mesh>
 
       {/* Entrance Door Sign */}
-      <Html position={[0, 3.7, 0]} center distanceFactor={14} zIndexRange={[10, 0]}>
-        <div className="px-3 py-1 bg-emerald-600/90 text-white font-extrabold text-xs rounded-md shadow-[0_0_15px_rgba(16,185,129,0.7)] border border-emerald-400 backdrop-blur-md flex items-center gap-1.5 animate-pulse">
-          <span className="w-2 h-2 rounded-full bg-emerald-300"></span>
+      <Html 
+        position={[0, 3.7, 0]} 
+        center 
+        distanceFactor={8} 
+        zIndexRange={[1000, 0]}
+        style={{ pointerEvents: 'none' }}
+      >
+        <div className="px-2.5 py-1 bg-emerald-600/90 text-white font-extrabold text-[10px] rounded-md shadow-[0_0_12px_rgba(16,185,129,0.7)] border border-emerald-400 backdrop-blur-md flex items-center gap-1.5 animate-pulse select-none whitespace-nowrap">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 flex-shrink-0"></span>
           <span>ENTRANCE (출입구)</span>
         </div>
       </Html>

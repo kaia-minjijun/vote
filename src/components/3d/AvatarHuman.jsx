@@ -100,14 +100,20 @@ export function AvatarHuman({ participant, targetPosition, isWinner = false }) {
       </mesh>
 
       {/* Floating Name Tag Above Avatar */}
-      <Html position={[0, 1.8, 0]} center distanceFactor={14} zIndexRange={[10, 0]}>
-        <div className={`px-2 py-0.5 rounded-md text-[11px] font-bold whitespace-nowrap shadow-lg backdrop-blur-md flex items-center gap-1 border transition-transform ${
+      <Html 
+        position={[0, 1.8, 0]} 
+        center 
+        distanceFactor={8} 
+        zIndexRange={[1000, 0]}
+        style={{ pointerEvents: 'none' }}
+      >
+        <div className={`px-2 py-0.5 rounded-md text-[10px] font-bold whitespace-nowrap shadow-md backdrop-blur-md flex items-center gap-1 border select-none transition-transform ${
           isWinner 
-            ? 'bg-amber-500 text-slate-950 border-amber-300 scale-110 shadow-[0_0_10px_rgba(245,158,11,0.8)]' 
-            : 'bg-slate-900/90 text-white border-slate-700'
+            ? 'bg-amber-500 text-slate-950 border-amber-300 scale-105 shadow-[0_0_8px_rgba(245,158,11,0.8)]' 
+            : 'bg-slate-900/90 text-white border-slate-700/80'
         }`}>
           <span 
-            className="w-2 h-2 rounded-full"
+            className="w-2 h-2 rounded-full flex-shrink-0"
             style={{ backgroundColor: assignedTeamColor }}
           />
           <span>{participant.name}</span>
