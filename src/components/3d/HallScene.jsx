@@ -75,9 +75,10 @@ export function HallScene({ votes = {}, session = {}, winningTeam = null }) {
         className="w-full h-full"
       >
         <color attach="background" args={['#080c16']} />
+        <fog attach="fog" args={['#080c16', 20, 65]} />
         
         {/* Soft Ambient & Directional Lighting */}
-        <ambientLight intensity={0.8} />
+        <ambientLight intensity={0.85} />
         <directionalLight 
           position={[12, 24, 18]} 
           intensity={1.2} 
@@ -99,30 +100,31 @@ export function HallScene({ votes = {}, session = {}, winningTeam = null }) {
         {/* Smooth Contact Shadows under objects - eliminates shadow map frustum wall bug */}
         <ContactShadows 
           position={[0, 0, 0]} 
-          opacity={0.6} 
-          scale={40} 
+          opacity={0.65} 
+          scale={50} 
           blur={2.5} 
           far={10} 
           color="#000000" 
         />
 
-        {/* Floor Base */}
+        {/* Extended Seamless Floor Base */}
         <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[35, 30]} />
+          <planeGeometry args={[200, 200]} />
           <meshStandardMaterial color="#0c1220" roughness={0.6} metalness={0.4} />
         </mesh>
 
-        {/* Grid Accent */}
+        {/* Infinite Grid Accent */}
         <Grid 
           position={[0, 0, 0]} 
-          args={[35, 30]} 
+          args={[150, 150]} 
           cellSize={1} 
           cellThickness={0.8} 
           cellColor="#1e293b" 
           sectionSize={5} 
           sectionThickness={1.5} 
           sectionColor="#334155" 
-          fadeDistance={30} 
+          fadeDistance={55}
+          fadeStrength={1} 
         />
 
         {/* Entrance Door Gate */}
