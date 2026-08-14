@@ -103,21 +103,21 @@ export function AvatarHuman({ participant, targetPosition, isWinner = false }) {
       <Html 
         position={[0, 1.8, 0]} 
         center 
-        distanceFactor={8} 
-        zIndexRange={[1000, 0]}
+        distanceFactor={5.5} 
+        zIndexRange={[0, 1000]}
         style={{ pointerEvents: 'none' }}
       >
-        <div className={`px-2 py-0.5 rounded-md text-[10px] font-bold whitespace-nowrap shadow-md backdrop-blur-md flex items-center gap-1 border select-none transition-transform ${
+        <div className={`px-2 py-0.5 rounded-md text-[9px] font-bold whitespace-nowrap shadow-md backdrop-blur-md flex items-center gap-1 border select-none transition-transform ${
           isWinner 
             ? 'bg-amber-500 text-slate-950 border-amber-300 scale-105 shadow-[0_0_8px_rgba(245,158,11,0.8)]' 
             : 'bg-slate-900/90 text-white border-slate-700/80'
         }`}>
           <span 
-            className="w-2 h-2 rounded-full flex-shrink-0"
+            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
             style={{ backgroundColor: assignedTeamColor }}
           />
           <span>{participant.name}</span>
-          <span className="text-[9px] opacity-75 font-normal">({participant.dept})</span>
+          <span className="text-[8px] opacity-75 font-normal">({participant.dept})</span>
         </div>
       </Html>
     </group>

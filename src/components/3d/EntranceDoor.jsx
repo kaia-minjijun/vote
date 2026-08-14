@@ -38,11 +38,11 @@ export function EntranceDoor({ position = [-10.5, 0, -7.5] }) {
       <Html 
         position={[0, 3.7, 0]} 
         center 
-        distanceFactor={8} 
-        zIndexRange={[1000, 0]}
+        distanceFactor={6} 
+        zIndexRange={[0, 1000]}
         style={{ pointerEvents: 'none' }}
       >
-        <div className="px-2.5 py-1 bg-emerald-600/90 text-white font-extrabold text-[10px] rounded-md shadow-[0_0_12px_rgba(16,185,129,0.7)] border border-emerald-400 backdrop-blur-md flex items-center gap-1.5 animate-pulse select-none whitespace-nowrap">
+        <div className="px-2 py-0.5 bg-emerald-600/90 text-white font-extrabold text-[9px] rounded-md shadow-[0_0_12px_rgba(16,185,129,0.7)] border border-emerald-400 backdrop-blur-md flex items-center gap-1 animate-pulse select-none whitespace-nowrap">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 flex-shrink-0"></span>
           <span>ENTRANCE (출입구)</span>
         </div>
