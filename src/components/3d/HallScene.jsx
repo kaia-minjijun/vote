@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid } from '@react-three/drei';
+import { OrbitControls, Grid, ContactShadows } from '@react-three/drei';
 import { TableGroup, TABLE_POSITIONS } from './TableGroup';
 import { AvatarHuman } from './AvatarHuman';
 import { EntranceDoor } from './EntranceDoor';
@@ -71,28 +71,19 @@ export function HallScene({ votes = {}, session = {}, winningTeam = null }) {
   return (
     <div className="w-full h-full relative">
       <Canvas
-        shadows
         camera={{ position: [0, 16, 17], fov: 42 }}
         className="w-full h-full"
       >
         <color attach="background" args={['#080c16']} />
         
         {/* Soft Ambient & Directional Lighting */}
-        <ambientLight intensity={0.7} />
+        <ambientLight intensity={0.8} />
         <directionalLight 
-          position={[10, 20, 15]} 
+          position={[12, 24, 18]} 
           intensity={1.2} 
-          castShadow 
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-          shadow-camera-far={50}
-          shadow-camera-left={-15}
-          shadow-camera-right={15}
-          shadow-camera-top={15}
-          shadow-camera-bottom={-15}
         />
-        <pointLight position={[-10, 10, -10]} intensity={0.5} color="#38bdf8" />
-        <pointLight position={[10, 10, 10]} intensity={0.5} color="#c084fc" />
+        <pointLight position={[-10, 10, -10]} intensity={0.6} color="#38bdf8" />
+        <pointLight position={[10, 10, 10]} intensity={0.6} color="#c084fc" />
 
         {/* Camera Control - restricted for optimal view */}
         <OrbitControls 
@@ -105,8 +96,18 @@ export function HallScene({ votes = {}, session = {}, winningTeam = null }) {
           target={[0, 0, 1]}
         />
 
+        {/* Smooth Contact Shadows under objects - eliminates shadow map frustum wall bug */}
+        <ContactShadows 
+          position={[0, 0, 0]} 
+          opacity={0.6} 
+          scale={40} 
+          blur={2.5} 
+          far={10} 
+          color="#000000" 
+        />
+
         {/* Floor Base */}
-        <mesh position={[0, -0.05, 0]} receiveShadow>
+        <mesh position={[0, -0.05, 0]}>
           <planeGeometry args={[35, 30]} />
           <meshStandardMaterial color="#0c1220" roughness={0.6} metalness={0.4} />
         </mesh>
